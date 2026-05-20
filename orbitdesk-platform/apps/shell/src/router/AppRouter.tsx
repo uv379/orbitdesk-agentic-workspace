@@ -3,6 +3,9 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppShell } from '@/layout/AppShell'
 import { LoadingPage } from '@/pages/LoadingPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { LoginPage } from '@/pages/LoginPage'
+import { SignupPage } from '@/pages/SignupPage'
+import { ProtectedRoute } from '@/auth/ProtectedRoute'
 
 // MFE remotes — each resolved via module federation at runtime.
 // Fallback to placeholder pages while individual MFEs are not yet deployed.
@@ -37,82 +40,52 @@ const SettingsPage = lazy(() =>
 export function AppRouter() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
-      <Route path="/app/*" element={<AppShell />}>
-        <Route
-          path="dashboard/*"
-          element={
-            <Suspense fallback={<LoadingPage />}>
-              <DashboardPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="chat/*"
-          element={
-            <Suspense fallback={<LoadingPage />}>
-              <ChatPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="documents/*"
-          element={
-            <Suspense fallback={<LoadingPage />}>
-              <DocumentsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="agents/*"
-          element={
-            <Suspense fallback={<LoadingPage />}>
-              <AgentsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="workflows/*"
-          element={
-            <Suspense fallback={<LoadingPage />}>
-              <WorkflowsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="integrations/*"
-          element={
-            <Suspense fallback={<LoadingPage />}>
-              <IntegrationsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="artifacts/*"
-          element={
-            <Suspense fallback={<LoadingPage />}>
-              <ArtifactsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="usage/*"
-          element={
-            <Suspense fallback={<LoadingPage />}>
-              <UsagePage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="settings/*"
-          element={
-            <Suspense fallback={<LoadingPage />}>
-              <SettingsPage />
-            </Suspense>
-          }
-        />
-        <Route path="*" element={<NotFoundPage />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
+
+      <Route element={<ProtectedRoute />}>
+        <Route path="/app/*" element={<AppShell />}>
+          <Route
+            path="dashboard/*"
+            element={<Suspense fallback={<LoadingPage />}><DashboardPage /></Suspense>}
+          />
+          <Route
+            path="chat/*"
+            element={<Suspense fallback={<LoadingPage />}><ChatPage /></Suspense>}
+          />
+          <Route
+            path="documents/*"
+            element={<Suspense fallback={<LoadingPage />}><DocumentsPage /></Suspense>}
+          />
+          <Route
+            path="agents/*"
+            element={<Suspense fallback={<LoadingPage />}><AgentsPage /></Suspense>}
+          />
+          <Route
+            path="workflows/*"
+            element={<Suspense fallback={<LoadingPage />}><WorkflowsPage /></Suspense>}
+          />
+          <Route
+            path="integrations/*"
+            element={<Suspense fallback={<LoadingPage />}><IntegrationsPage /></Suspense>}
+          />
+          <Route
+            path="artifacts/*"
+            element={<Suspense fallback={<LoadingPage />}><ArtifactsPage /></Suspense>}
+          />
+          <Route
+            path="usage/*"
+            element={<Suspense fallback={<LoadingPage />}><UsagePage /></Suspense>}
+          />
+          <Route
+            path="settings/*"
+            element={<Suspense fallback={<LoadingPage />}><SettingsPage /></Suspense>}
+          />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
       </Route>
+
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )

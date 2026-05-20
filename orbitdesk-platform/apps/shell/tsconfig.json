@@ -17,9 +17,18 @@
     "noFallthroughCasesInSwitch": true,
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
+    "typeRoots": ["./node_modules/@types"],
+    "types": ["node"],
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@orbitdesk/ui": ["../../packages/ui/src/index.ts"],
+      "@orbitdesk/ui/*": ["../../packages/ui/src/*"],
+      "@orbitdesk/sdk": ["../../packages/sdk/src/index.ts"],
+      "@orbitdesk/sdk/*": ["../../packages/sdk/src/*"],
+      "zustand": ["node_modules/zustand"],
+      "zustand/middleware": ["node_modules/zustand/middleware"],
+      "crypto-js": ["node_modules/@types/crypto-js"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "../../packages/ui/src", "../../packages/sdk/src"]
 }
