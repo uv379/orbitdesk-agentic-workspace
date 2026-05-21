@@ -1,0 +1,61 @@
+# ==============================================================================
+# ingress/ingress.yaml — Routes external HTTP/HTTPS traffic into the cluster
+# ==============================================================================
+#
+# WHAT IS AN INGRESS?
+# An Ingress is a layer-7 (HTTP) router that sits in front of your Services.
+# It handles: domain routing, TLS termination (HTTPS), and path-based routing.
+#
+# With just a LoadBalancer Service, every service would need its own public IP.
+# An Ingress lets you use ONE IP/domain and route different paths to different services.
+#
+# REQUIRES: an Ingress Controller to be installed (e.g. ingress-nginx):
+#   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/...
+#
+# TLS CERTIFICATE:
+# We use cert-manager with Let's Encrypt to auto-issue free HTTPS certificates.
+# Install cert-manager first:
+#   kubectl apply -f https://github.com/cert-manager/cert-manager/releases/...
+# Then create a ClusterIssuer (see cert-manager docs).
+# ==============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: orbitdesk-ingress
+  namespace: orbitdesk
+  annotations:
+    # Tell Kubernetes which ingress controller handles this rule
+    kubernetes.io/ingress.class: nginx
+
+    # cert-manager annotation: automatically issue + renew TLS cert from Let's Encrypt
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+    # Increase body size limit for document uploads (default is 1MB which is too small)
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+
+    # WebSocket support — required for the /ws Socket.IO namespace
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/upgrade: "websocket"
+    nginx.ingress.kubernetes.io/connection: "Upgrade"
+
+spec:
+  tls:
+    - hosts:
+        - api.orbitdesk.io          # replace with your actual domain
+      secretName: orbitdesk-tls     # cert-manager stores the cert here
+
+  rules:
+    - host: api.orbitdesk.io
+      http:
+        paths:
+          # All traffic goes to api-gateway — it handles routing internally.
+          # The gateway's ProxyService then forwards to the correct backend service.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 80

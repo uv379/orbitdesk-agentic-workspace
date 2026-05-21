@@ -1,0 +1,66 @@
+# ==============================================================================
+# services/api-gateway.yaml — Kubernetes Service for the API Gateway
+# ==============================================================================
+#
+# WHAT IS A KUBERNETES SERVICE?
+# A Service gives pods a stable network identity. Pods can be created/deleted
+# at any time — their IP addresses change. A Service provides one stable
+# hostname + port that always routes to healthy pods behind it.
+#
+# Without a Service, nothing can reliably reach the api-gateway pods because
+# their IPs change every time they restart.
+#
+# SERVICE TYPES:
+#   ClusterIP    — only reachable inside the cluster (for internal services)
+#   NodePort     — opens a port on every node (simple, not for production)
+#   LoadBalancer — provisions a cloud load balancer with a public IP (production)
+#
+# The api-gateway gets a LoadBalancer because it's the public entry point.
+# All other services (auth, user, etc.) use ClusterIP — only the gateway reaches them.
+# ==============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: orbitdesk
+  labels:
+    app: api-gateway
+spec:
+  type: LoadBalancer              # provisions an external load balancer (AWS ALB, GCP, etc.)
+  selector:
+    app: api-gateway              # routes traffic to pods with this label
+  ports:
+    - name: http
+      port: 80                    # external port (clients connect to :80)
+      targetPort: 8000            # internal container port (our app listens on 8000)
+      protocol: TCP
+
+---
+# ==============================================================================
+# HorizontalPodAutoscaler — auto-scales api-gateway pods based on CPU load
+# ==============================================================================
+#
+# When CPU usage across all pods exceeds 70%, k8s adds more pods (up to 10).
+# When load drops, it scales back down (minimum 2 for high availability).
+# Requires the metrics-server to be installed in the cluster.
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-gateway-hpa
+  namespace: orbitdesk
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70  # scale up when avg CPU > 70%

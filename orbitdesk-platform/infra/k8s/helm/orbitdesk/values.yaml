@@ -1,0 +1,124 @@
+# ==============================================================================
+# values.yaml — Default configuration values for the OrbitDesk Helm chart
+# ==============================================================================
+#
+# These are the DEFAULT values used when you run `helm install orbitdesk .`
+# Override per environment:
+#   helm install orbitdesk . -f values.prod.yaml        ← production overrides
+#   helm upgrade  orbitdesk . --set gateway.replicas=4  ← single value override
+#
+# Templates in the helm/orbitdesk/templates/ folder reference these values
+# using Go template syntax: {{ .Values.gateway.image.tag }}
+# ==============================================================================
+
+# Global values shared across all services
+global:
+  registry: ghcr.io/your-org     # container registry prefix
+  namespace: orbitdesk
+  environment: production
+
+# ── API Gateway ────────────────────────────────────────────────────────────────
+gateway:
+  image:
+    repository: ghcr.io/your-org/orbitdesk-api-gateway
+    tag: latest                  # CI/CD overrides this with the actual commit SHA
+    pullPolicy: Always
+  replicas: 2
+  port: 8000
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  rateLimit:
+    windowMs: 60000
+    max: 100
+
+# ── Auth Service ───────────────────────────────────────────────────────────────
+authService:
+  image:
+    repository: ghcr.io/your-org/orbitdesk-auth-service
+    tag: latest
+  replicas: 2
+  port: 3001
+  jwtExpiresIn: "7d"
+
+# ── User Service ───────────────────────────────────────────────────────────────
+userService:
+  image:
+    repository: ghcr.io/your-org/orbitdesk-user-service
+    tag: latest
+  replicas: 2
+  port: 3002
+
+# ── Agent Service ──────────────────────────────────────────────────────────────
+agentService:
+  image:
+    repository: ghcr.io/your-org/orbitdesk-agent-service
+    tag: latest
+  replicas: 2
+  port: 3003
+
+# ── AI Core Service ────────────────────────────────────────────────────────────
+aiCoreService:
+  image:
+    repository: ghcr.io/your-org/orbitdesk-ai-core-service
+    tag: latest
+  replicas: 2
+  port: 3004
+
+# ── Document Service ───────────────────────────────────────────────────────────
+documentService:
+  image:
+    repository: ghcr.io/your-org/orbitdesk-document-service
+    tag: latest
+  replicas: 2
+  port: 3005
+
+# ── Workflow Service ───────────────────────────────────────────────────────────
+workflowService:
+  image:
+    repository: ghcr.io/your-org/orbitdesk-workflow-service
+    tag: latest
+  replicas: 2
+  port: 3006
+
+# ── Integration Service ────────────────────────────────────────────────────────
+integrationService:
+  image:
+    repository: ghcr.io/your-org/orbitdesk-integration-service
+    tag: latest
+  replicas: 2
+  port: 3007
+
+# ── ML Pipeline Service ────────────────────────────────────────────────────────
+mlPipelineService:
+  image:
+    repository: ghcr.io/your-org/orbitdesk-ml-pipeline-service
+    tag: latest
+  replicas: 1                    # ML jobs are heavy — start with 1, scale manually
+  port: 3008
+
+# ── Ingress ────────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  host: api.orbitdesk.io         # replace with your domain
+  tls: true
+  certIssuer: letsencrypt-prod
+
+# ── Secrets (values here are placeholders — override with real secrets) ────────
+# NEVER commit real secret values. Use:
+#   helm install orbitdesk . --set secrets.jwtSecret=$(cat /run/secrets/jwt)
+# Or use External Secrets Operator to pull from AWS Secrets Manager / Vault.
+secrets:
+  jwtSecret: ""                  # REQUIRED — must be set at deploy time
+  postgresPassword: ""           # REQUIRED
+  anthropicApiKey: ""            # REQUIRED
+  s3SecretKey: ""                # REQUIRED

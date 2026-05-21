@@ -1,0 +1,25 @@
+# ==============================================================================
+# Chart.yaml — Helm chart metadata for the OrbitDesk platform
+# ==============================================================================
+#
+# WHAT IS HELM?
+# Helm is the "package manager" for Kubernetes. Instead of applying 20+ YAML
+# files one by one, you run `helm install orbitdesk ./infra/k8s/helm/orbitdesk`
+# and Helm deploys everything in the right order with the right values.
+#
+# The `values.yaml` file next to this one is where you configure image tags,
+# replica counts, resource limits, and secrets per environment (dev vs prod).
+#
+# USEFUL COMMANDS:
+#   helm install   orbitdesk ./infra/k8s/helm/orbitdesk -f values.prod.yaml
+#   helm upgrade   orbitdesk ./infra/k8s/helm/orbitdesk --set gateway.image.tag=v1.2.3
+#   helm rollback  orbitdesk 1          ← roll back to release revision 1
+#   helm uninstall orbitdesk            ← remove everything from the cluster
+# ==============================================================================
+
+apiVersion: v2
+name: orbitdesk
+description: OrbitDesk — AI-powered help desk platform
+type: application
+version: 0.1.0        # chart version (bump when you change the chart itself)
+appVersion: "1.0.0"   # app version (matches your git tag / docker image tag)

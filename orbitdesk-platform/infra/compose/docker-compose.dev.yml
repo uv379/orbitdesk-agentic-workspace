@@ -1,0 +1,289 @@
+# ==============================================================================
+# docker-compose.dev.yml — All OrbitDesk application services (development)
+# ==============================================================================
+#
+# Contains: api-gateway + all 8 backend services
+# Requires: docker-compose.base.yml + docker-compose.infra.yml
+#
+# KEY DEV FEATURES:
+#   Hot reload: source code is mounted as a volume so changes auto-recompile.
+#   No pre-built images: every service builds from its local Dockerfile.
+#   node_modules isolation: the anonymous volume (/app/node_modules) prevents
+#     the host's node_modules from overwriting the container's installed deps.
+#
+# Run everything together:
+#   docker compose \
+#     -f infra/compose/docker-compose.base.yml \
+#     -f infra/compose/docker-compose.infra.yml \
+#     -f infra/compose/docker-compose.dev.yml \
+#     up
+#
+# Shortcut: `make dev` (uses the Makefile at the repo root)
+#
+# Rebuild a single service after changing its Dockerfile or package.json:
+#   docker compose ... up --build api-gateway
+# ==============================================================================
+
+services:
+
+  # ── API Gateway (port 8000 — the only public-facing container) ───────────────
+  api-gateway:
+    build:
+      context: ../../apps/api-gateway
+      dockerfile: Dockerfile
+    container_name: orbitdesk-api-gateway
+    restart: unless-stopped
+    command: npm run start:dev          # NestJS watch mode (ts-node + chokidar)
+    volumes:
+      # Mount source so code changes reload without rebuilding the image.
+      - ../../apps/api-gateway/src:/app/src
+      # Anonymous volume: prevents host node_modules from shadowing the
+      # container's installed packages (common Docker gotcha).
+      - /app/node_modules
+    env_file:
+      # Reads PORT, CORS_ORIGIN, RATE_LIMIT_*, and service URLs from the
+      # gateway's own .env — single source of truth, no duplication here.
+      # Run `make setup` first so this file exists (copied from .env.template).
+      - ../../apps/api-gateway/.env
+    environment:
+      NODE_ENV: development
+      # JWT_SECRET comes from infra/compose/.env (shared with auth-service).
+      # The `environment:` block overrides any value from env_file above.
+      JWT_SECRET: ${JWT_SECRET}
+      # Override the localhost URLs from apps/api-gateway/.env with Docker-internal
+      # hostnames. Inside the Docker network, services resolve by container name.
+      AUTH_SERVICE_URL: http://auth-service:3001
+      USER_SERVICE_URL: http://user-service:3002
+      AGENT_SERVICE_URL: http://agent-service:3003
+      AI_CORE_URL: http://ai-core-service:3004
+      DOCUMENT_SERVICE_URL: http://document-service:3005
+      WORKFLOW_SERVICE_URL: http://workflow-service:3006
+      INTEGRATION_SERVICE_URL: http://integration-service:3007
+      ML_PIPELINE_URL: http://ml-pipeline-service:3008
+    ports:
+      - "8000:8000"                     # only this container is accessible from the host
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+      agent-service:
+        condition: service_started
+      ai-core-service:
+        condition: service_started
+      document-service:
+        condition: service_started
+      workflow-service:
+        condition: service_started
+      integration-service:
+        condition: service_started
+      ml-pipeline-service:
+        condition: service_started
+    networks:
+      - orbitdesk-network
+
+  # ── auth-service (port 3001) ──────────────────────────────────────────────────
+  auth-service:
+    build:
+      context: ../../apps/services/auth-service
+      dockerfile: Dockerfile
+    container_name: orbitdesk-auth-service
+    restart: unless-stopped
+    command: npm run start:dev
+    volumes:
+      - ../../apps/services/auth-service/src:/app/src
+      - /app/node_modules
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 7d
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/orbitdesk_auth
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - orbitdesk-network
+
+  # ── user-service (port 3002) ──────────────────────────────────────────────────
+  user-service:
+    build:
+      context: ../../apps/services/user-service
+      dockerfile: Dockerfile
+    container_name: orbitdesk-user-service
+    restart: unless-stopped
+    command: npm run start:dev
+    volumes:
+      - ../../apps/services/user-service/src:/app/src
+      - /app/node_modules
+    environment:
+      PORT: 3002
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/orbitdesk_users
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - orbitdesk-network
+
+  # ── agent-service (port 3003) ─────────────────────────────────────────────────
+  agent-service:
+    build:
+      context: ../../apps/services/agent-service
+      dockerfile: Dockerfile
+    container_name: orbitdesk-agent-service
+    restart: unless-stopped
+    command: npm run start:dev
+    volumes:
+      - ../../apps/services/agent-service/src:/app/src
+      - /app/node_modules
+    environment:
+      PORT: 3003
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/orbitdesk_agents
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      KAFKA_BROKER: ${KAFKA_BROKER}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - orbitdesk-network
+
+  # ── ai-core-service (port 3004) ───────────────────────────────────────────────
+  ai-core-service:
+    build:
+      context: ../../apps/services/ai-core-service
+      dockerfile: Dockerfile
+    container_name: orbitdesk-ai-core-service
+    restart: unless-stopped
+    command: npm run start:dev
+    volumes:
+      - ../../apps/services/ai-core-service/src:/app/src
+      - /app/node_modules
+    environment:
+      PORT: 3004
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/orbitdesk_ai_core
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - orbitdesk-network
+
+  # ── document-service (port 3005) ──────────────────────────────────────────────
+  document-service:
+    build:
+      context: ../../apps/services/document-service
+      dockerfile: Dockerfile
+    container_name: orbitdesk-document-service
+    restart: unless-stopped
+    command: npm run start:dev
+    volumes:
+      - ../../apps/services/document-service/src:/app/src
+      - /app/node_modules
+    environment:
+      PORT: 3005
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/orbitdesk_documents
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: ${S3_REGION}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET_DOCUMENTS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - orbitdesk-network
+
+  # ── workflow-service (port 3006) ──────────────────────────────────────────────
+  workflow-service:
+    build:
+      context: ../../apps/services/workflow-service
+      dockerfile: Dockerfile
+    container_name: orbitdesk-workflow-service
+    restart: unless-stopped
+    command: npm run start:dev
+    volumes:
+      - ../../apps/services/workflow-service/src:/app/src
+      - /app/node_modules
+    environment:
+      PORT: 3006
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/orbitdesk_workflows
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - orbitdesk-network
+
+  # ── integration-service (port 3007) ───────────────────────────────────────────
+  integration-service:
+    build:
+      context: ../../apps/services/integration-service
+      dockerfile: Dockerfile
+    container_name: orbitdesk-integration-service
+    restart: unless-stopped
+    command: npm run start:dev
+    volumes:
+      - ../../apps/services/integration-service/src:/app/src
+      - /app/node_modules
+    environment:
+      PORT: 3007
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/orbitdesk_integrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - orbitdesk-network
+
+  # ── ml-pipeline-service (port 3008) ───────────────────────────────────────────
+  ml-pipeline-service:
+    build:
+      context: ../../apps/services/ml-pipeline-service
+      dockerfile: Dockerfile
+    container_name: orbitdesk-ml-pipeline-service
+    restart: unless-stopped
+    command: npm run start:dev
+    volumes:
+      - ../../apps/services/ml-pipeline-service/src:/app/src
+      - /app/node_modules
+    environment:
+      PORT: 3008
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/orbitdesk_ml
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: ${S3_REGION}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET_MODELS}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      KAFKA_BROKER: ${KAFKA_BROKER}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - orbitdesk-network
