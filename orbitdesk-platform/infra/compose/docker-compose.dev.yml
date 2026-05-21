@@ -86,23 +86,27 @@ services:
     networks:
       - orbitdesk-network
 
-  # ── auth-service (port 3001) ──────────────────────────────────────────────────
+  # ── auth-service (port 3001) — FastAPI / Python ───────────────────────────────
   auth-service:
     build:
       context: ../../apps/services/auth-service
       dockerfile: Dockerfile
     container_name: orbitdesk-auth-service
     restart: unless-stopped
-    command: npm run start:dev
+    # uvicorn --reload watches for file changes and hot-reloads the app (dev only).
+    # The volume mount below makes local code changes visible inside the container.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 3001 --reload
     volumes:
-      - ../../apps/services/auth-service/src:/app/src
-      - /app/node_modules
+      # Mount source code so file changes reload without rebuilding the image.
+      - ../../apps/services/auth-service/app:/app/app
     environment:
       PORT: 3001
-      NODE_ENV: development
+      DEBUG: "False"
       JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: 7d
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/orbitdesk_auth
+      JWT_ACCESS_EXPIRES: 15m
+      JWT_REFRESH_EXPIRES: 7d
+      # "+asyncpg" driver prefix is required by SQLAlchemy's async engine.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/orbitdesk_auth
     depends_on:
       postgres:
         condition: service_healthy

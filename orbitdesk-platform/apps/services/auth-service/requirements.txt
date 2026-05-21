@@ -1,0 +1,48 @@
+# ==============================================================================
+# requirements.txt — Python dependencies for auth-service
+# ==============================================================================
+#
+# Install locally:   pip install -r requirements.txt
+# In Docker:         COPY requirements.txt . && RUN pip install -r requirements.txt
+#
+# Each group is explained below so you know WHY each package exists.
+# ==============================================================================
+
+# ── Web framework ──────────────────────────────────────────────────────────────
+fastapi==0.115.5          # The web framework. Handles HTTP routing, request parsing,
+                           # response serialization, and auto-generates /docs (Swagger UI).
+
+uvicorn[standard]==0.32.1  # ASGI server — runs the FastAPI app. Like Node's `node server.js`.
+                           # [standard] adds watchfiles (hot-reload) + httptools (fast parser).
+
+# ── Database ───────────────────────────────────────────────────────────────────
+sqlalchemy[asyncio]==2.0.36  # ORM (Object-Relational Mapper). Lets you write Python classes
+                              # instead of raw SQL. [asyncio] enables non-blocking DB queries.
+
+asyncpg==0.30.0           # Async PostgreSQL driver. SQLAlchemy uses this under the hood
+                           # to talk to Postgres without blocking the event loop.
+
+alembic==1.14.0           # Database migration tool. When you change a model (add a column,
+                           # rename a field), Alembic generates a migration script to update
+                           # the DB schema safely without dropping all data.
+
+# ── Validation & Settings ──────────────────────────────────────────────────────
+pydantic==2.10.3          # Data validation library. FastAPI uses this for request/response
+                           # schemas. Define a class, Pydantic validates & parses automatically.
+
+pydantic-settings==2.6.1  # Extends Pydantic to read settings from .env files and environment
+                           # variables. Used in app/core/config.py.
+
+# ── Authentication ─────────────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0  # JWT library. Signs and verifies JSON Web Tokens.
+                                   # [cryptography] adds RS256 support (we use HS256 here).
+
+bcrypt==5.0.0             # Password hashing. Used directly (not via passlib) to avoid
+                           # the passlib 1.7.4 / bcrypt 4.x+ incompatibility.
+
+# ── Utilities ──────────────────────────────────────────────────────────────────
+python-multipart==0.0.19  # Required by FastAPI to parse form data (OAuth2 login forms).
+python-dotenv==1.0.1      # Loads .env file into environment variables during local dev.
+email-validator==2.3.0    # Required by Pydantic's EmailStr type used in auth schemas.
+psycopg2-binary==2.9.10   # Sync Postgres driver — used ONLY by Alembic migrations.
+                           # The app itself uses asyncpg; Alembic requires a sync driver.

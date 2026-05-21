@@ -82,7 +82,7 @@ services:
   # still defaults to ZooKeeper for stability. You can remove this and switch
   # to KRaft mode when you're comfortable with Kafka internals.
   zookeeper:
-    image: bitnami/zookeeper:3.9
+    image: bitnami/zookeeper:3.9.2
     container_name: orbitdesk-zookeeper
     restart: unless-stopped
     environment:

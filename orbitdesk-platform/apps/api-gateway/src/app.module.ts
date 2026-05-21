@@ -77,8 +77,11 @@ export class AppModule implements NestModule {
       .apply(AuthMiddleware, RateLimitMiddleware)
       .exclude(
         { path: 'health/(.*)', method: RequestMethod.GET }, // skip /health/*
-        { path: 'api/auth/login', method: RequestMethod.POST }, // skip login
-        { path: 'api/auth/register', method: RequestMethod.POST }, // skip register
+        { path: 'api/auth/login', method: RequestMethod.POST },   // skip login (no token yet)
+        { path: 'api/auth/signup', method: RequestMethod.POST },  // skip signup (no token yet)
+        // /refresh MUST be excluded: the access token is expired when this is called,
+        // so the auth middleware would reject it before the refresh can happen.
+        { path: 'api/auth/refresh', method: RequestMethod.POST }, // skip refresh (access token is expired)
       )
       .forRoutes({ path: 'api/*', method: RequestMethod.ALL })
   }
